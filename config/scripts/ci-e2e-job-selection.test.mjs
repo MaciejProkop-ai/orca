@@ -148,7 +148,10 @@ it('runs remaining SSH tests after real failures and stops them when a run is ca
 
 it.each([
   'src/renderer/src/components/right-sidebar/useFileExplorerWatch.ts',
-  'src/renderer/src/components/right-sidebar/file-explorer-operation-owner.ts'
+  'src/renderer/src/components/right-sidebar/file-explorer-operation-owner.ts',
+  'src/renderer/src/components/right-sidebar/FileExplorer.tsx',
+  'src/renderer/src/components/right-sidebar/useFileExplorerTree.ts',
+  'src/renderer/src/components/right-sidebar/use-file-explorer-tree-load-effects.ts'
 ])('routes %s to the template-building selected-host explorer lane', (file) => {
   const spec = 'tests/e2e/ssh-orcad-explorer-selected-host.spec.ts'
   expect(selectPrE2eSpecs([file])).toContain(spec)
