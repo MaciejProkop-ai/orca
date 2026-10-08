@@ -224,6 +224,38 @@ for (const selectedHost of ['A', 'B'] as const) {
       await expect(page.getByText(`NESTED_${otherName}.txt`, { exact: true })).toBeVisible()
       await expect(page.getByText(`NESTED_${selectedHost}.txt`, { exact: true })).toHaveCount(0)
       await page.screenshot({ path: testInfo.outputPath('same-path-host-switch-refreshed.png') })
+      const folderRows = page.getByRole('option').filter({ hasText: /Folder host [AB]/ })
+      const rowIdentities = await folderRows.evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          name: node.textContent,
+          id: node.id,
+          current: node.getAttribute('aria-current'),
+          virtualKey: node.getAttribute('data-worktree-virtual-row-key')
+        }))
+      )
+      console.log('[folder-host-row-identities]', rowIdentities)
+      await page.screenshot({ path: testInfo.outputPath('folder-host-row-observed.png') })
+      await expect(folderRows.locator('[data-worktree-card-active]')).toHaveCount(1)
+      await expect(
+        page.getByRole('option').filter({ hasText: `Folder host ${otherName}` })
+      ).toHaveAttribute('aria-current', 'page')
+      await expect(
+        page.getByRole('option').filter({ hasText: `Folder host ${selectedHost}` })
+      ).not.toHaveAttribute('aria-current', 'page')
+      expect(new Set(rowIdentities.map((row) => row.id)).size).toBe(2)
+      expect(new Set(rowIdentities.map((row) => row.virtualKey)).size).toBe(2)
+      const selectedOptionId = await page
+        .getByRole('option')
+        .filter({ hasText: `Folder host ${otherName}` })
+        .getAttribute('id')
+      if (!selectedOptionId) {
+        throw new Error('Selected folder option has no DOM identity')
+      }
+      await expect(page.getByRole('listbox', { name: 'Worktrees', exact: true })).toHaveAttribute(
+        'aria-activedescendant',
+        selectedOptionId
+      )
+      await page.screenshot({ path: testInfo.outputPath('folder-host-row-corrected.png') })
       await page.waitForTimeout(1_000)
       const switchedMarker = `SWITCHED_HOST_${otherName}.txt`
       const switchedChange = page.waitForEvent('console', {

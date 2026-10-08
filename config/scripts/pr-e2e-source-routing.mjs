@@ -22,6 +22,17 @@ export const PR_E2E_SOURCE_ROUTES = [
         file === 'src/renderer/src/components/right-sidebar/file-explorer-operation-owner.ts' ||
         file === 'src/renderer/src/components/right-sidebar/FileExplorer.tsx' ||
         file === 'src/renderer/src/hooks/editor-external-watch-targets.ts' ||
+        file === 'src/renderer/src/components/sidebar/worktree-list/navigation/folder-reveal.ts' ||
+        file === 'src/shared/folder-workspace-worktree.ts' ||
+        file === 'src/renderer/src/components/sidebar/worktree-list/rows/folder-row.tsx' ||
+        file ===
+          'src/renderer/src/components/sidebar/worktree-list/viewport/virtual-row-context.ts' ||
+        file === 'src/renderer/src/components/sidebar/worktree-list/listing/render-row.ts' ||
+        file === 'src/renderer/src/components/sidebar/worktree-list/listing/use-section-rows.ts' ||
+        file ===
+          'src/renderer/src/components/sidebar/worktree-list/navigation/active-descendant-option.ts' ||
+        file ===
+          'src/renderer/src/components/sidebar/worktree-list/navigation/render-row-lookup.ts' ||
         file === 'src/renderer/src/components/right-sidebar/useFileExplorerTree.ts' ||
         file === 'src/renderer/src/components/right-sidebar/use-file-explorer-tree-load-effects.ts')
   },

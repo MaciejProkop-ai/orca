@@ -151,6 +151,14 @@ it.each([
   'src/renderer/src/components/right-sidebar/file-explorer-operation-owner.ts',
   'src/renderer/src/components/right-sidebar/FileExplorer.tsx',
   'src/renderer/src/hooks/editor-external-watch-targets.ts',
+  'src/renderer/src/components/sidebar/worktree-list/navigation/folder-reveal.ts',
+  'src/shared/folder-workspace-worktree.ts',
+  'src/renderer/src/components/sidebar/worktree-list/rows/folder-row.tsx',
+  'src/renderer/src/components/sidebar/worktree-list/viewport/virtual-row-context.ts',
+  'src/renderer/src/components/sidebar/worktree-list/listing/render-row.ts',
+  'src/renderer/src/components/sidebar/worktree-list/listing/use-section-rows.ts',
+  'src/renderer/src/components/sidebar/worktree-list/navigation/active-descendant-option.ts',
+  'src/renderer/src/components/sidebar/worktree-list/navigation/render-row-lookup.ts',
   'src/renderer/src/components/right-sidebar/useFileExplorerTree.ts',
   'src/renderer/src/components/right-sidebar/use-file-explorer-tree-load-effects.ts'
 ])('routes %s to the template-building selected-host explorer lane', (file) => {
