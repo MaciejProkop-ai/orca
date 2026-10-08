@@ -42,6 +42,7 @@ import {
 } from './structured-agent-session-turns'
 import type { AgentSessionPromptRequest } from './structured-agent-session-turns-prompt'
 import { queuedSendAnswer } from './structured-agent-session-queued-send-answer'
+import type { JournalOperationReceipt } from '../agent-session-journal/journal-row-writer'
 
 export type MutationPlan<TValue> = {
   method: string
@@ -61,6 +62,7 @@ export type MutationPlan<TValue> = {
        *  (`AgentSessionTurnContext.operationReceipt`): a row left pending wrote nothing. That
        *  success is fixed before the value exists, so it records no `settledOutcome`. */
       settlesWithWrite: true
+      successReceipt?: () => JournalOperationReceipt
       settledOutcome?: never
     }
   | {

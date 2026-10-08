@@ -111,18 +111,13 @@ export class JournalQueuedMessages {
     return queuedMessagesSettledByOp(this.deps.database().db, this.deps.sessionId, settledByOp)
   }
 
-  /** `carriedFrom`: a /clear's carry. The card is its own 'cleared' pause, so it lands paused;
-   *  `holdReason` carries a hold of its own over with it.
-   *  `requireAttachments`: a client's own draft, refused whole when an attachment it names is no
-   *  longer stored; the host's own writes (the carry) claim best effort.
-   *  `receipt`: the send's ledger answer, committed with the draft only when this inserts it. */
+  /** Attachments and the send receipt commit with the card. */
   insert(
     input: {
       messageId: string
       body: AgentJournalMessageItem
       fingerprint: string
       hostInstance: string
-      carriedFrom?: string
       requireAttachments?: true
       holdReason?: QueuedMessageHoldReason
     },

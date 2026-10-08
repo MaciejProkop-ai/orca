@@ -18207,6 +18207,7 @@
         "cancelledBy": "{{device}}にキャンセルされました"
       },
       "notices": {
+        "contextCleared": "コンテキストをクリアしました",
         "compaction": "圧縮されたコンテキスト",
         "details": "詳細",
         "plan": "プラン",

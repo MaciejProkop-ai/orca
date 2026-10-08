@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
 import { agentSessionProviderClaims } from './agent-session-provider-claims'
+import { agentSessionProviderHandleRoot } from './agent-session-provider-handle'
 import { providerContextRecordFixture } from './agent-session-provider-context.test-fixture'
 
 it('keeps archives as reservations and prefers the visible owner regardless of record order', () => {
@@ -31,5 +32,34 @@ it('does not hide conflicting visible claims, and picks a stable archive-only di
     expect(claims.find((claim) => claim.handle.nativeId === 'context-0')?.record.sessionId).toBe(
       'a-chat'
     )
+  }
+})
+
+it('reserves pre-clear handles while a later old-host adoption remains the visible owner', () => {
+  const cleared = {
+    ...providerContextRecordFixture('codex'),
+    providerContextBoundary: { operationId: 'clear', afterFence: 3, clearedAt: 5000 }
+  }
+  expect(agentSessionProviderClaims([cleared]).every((claim) => claim.archived)).toBe(true)
+  const last = cleared.providerHandleChain.at(-1)
+  if (!last) {
+    throw new Error('missing fixture handle')
+  }
+  const adopted = {
+    ...cleared,
+    sessionId: 'adopted-by-old-host',
+    providerContextBoundary: undefined,
+    providerHandleChain: [{ ...last, origin: 'adopted' as const, replaces: undefined }]
+  }
+  const root = agentSessionProviderHandleRoot(last.handle)
+  for (const records of [
+    [cleared, adopted],
+    [adopted, cleared]
+  ]) {
+    expect(
+      agentSessionProviderClaims(records).filter(
+        (claim) => agentSessionProviderHandleRoot(claim.handle) === root
+      )
+    ).toEqual([{ record: adopted, handle: last.handle, archived: false }])
   }
 })

@@ -10,6 +10,7 @@ import {
 } from '../../shared/agent-session-provider-handle'
 import { agentSessionProviderHandleBelongsTo } from '../../shared/agent-session-provider-handle-encoding'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import { providerContextProofLink } from '../../shared/agent-session-provider-context'
 
 export function recordAgentSessionProviderHandle(args: {
   record: AgentSessionRecord
@@ -32,7 +33,7 @@ export function recordAgentSessionProviderHandle(args: {
   }
   const providerHandleChain = appendAgentSessionProviderHandleLink(
     record.providerHandleChain,
-    args.link
+    providerContextProofLink(record, args.link)
   )
   const head = providerHandleChain.at(-1)
   if (!head) {

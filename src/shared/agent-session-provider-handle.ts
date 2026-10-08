@@ -18,7 +18,8 @@ import type { AgentType } from './agent-status-types'
 import {
   agentSessionProviderHandlesEqual,
   isAgentSessionProviderHandleLink,
-  providerHandleLinkFollows
+  providerHandleLinkFollows,
+  providerHandleNamespacesContinue
 } from './agent-session-provider-link-validation'
 export {
   agentSessionProviderHandlesEqual,
@@ -33,7 +34,6 @@ import {
   agentSessionProviderHandleRoot,
   decodePersistedAgentSessionProviderHandle,
   encodePersistedAgentSessionProviderHandle,
-  isAgentSessionProviderHandleInNamespace,
   type PersistedAgentSessionProviderHandle
 } from './agent-session-provider-handle-encoding'
 
@@ -193,7 +193,7 @@ function appendLink(
     }
     return [link]
   }
-  if (!isAgentSessionProviderHandleInNamespace(link.handle, head.handle)) {
+  if (!providerHandleNamespacesContinue(head, link)) {
     throw new Error('agent_session_provider_handle_provider_mismatch')
   }
   if (link.mintedAtFence < head.mintedAtFence) {

@@ -23,9 +23,10 @@ import {
 import type { AgentSessionProviderHandleLink } from './agent-session-provider-handle'
 import { decodeProviderContextHistory } from './agent-session-provider-context-history'
 import {
-  isAgentSessionProviderHandleInNamespace,
-  isStructuredAgentId
-} from './agent-session-provider-handle-encoding'
+  isAgentSessionProviderContextBoundary,
+  type AgentSessionProviderContextBoundary
+} from './agent-session-provider-context'
+import { isStructuredAgentId } from './agent-session-provider-handle-encoding'
 import {
   isAgentSessionAccountHome,
   MAX_PATH_LENGTH,
@@ -147,6 +148,7 @@ export type AgentSessionRecord = {
   /** The agent this session names, whether this build can run it or not. */
   provider: string
   providerHandleChain: AgentSessionProviderHandleLink[]
+  providerContextBoundary?: AgentSessionProviderContextBoundary
   accountHome: AgentSessionAccountHome
   /** The directory the provider first launched in, in the execution host's path syntax. Floating
    *  sessions resume here; worktree and folder ids still resolve by id to their durable place. */
@@ -357,6 +359,8 @@ export function isPersistedAgentSessionRecord(
       isBoundedString(record.launchDirectory, MAX_PATH_LENGTH)) &&
     (record.options === undefined || isAgentSessionOptions(record.options)) &&
     (record.rewind === undefined || isAgentSessionRewindRecord(record.rewind)) &&
+    (record.providerContextBoundary === undefined ||
+      isAgentSessionProviderContextBoundary(record.providerContextBoundary)) &&
     (record.conversationCommand === undefined ||
       isAgentSessionConversationCommandRecord(record.conversationCommand)) &&
     (record.conversationName === undefined ||
@@ -377,15 +381,11 @@ export function isPersistedAgentSessionRecord(
     'providerContextHistory' in value ? value.providerContextHistory : undefined
   )
   const head = chain?.at(-1)
-  // One namespace, owned by the record's own agent; which transport is the chain's own fact.
-  const transport = chain?.[0]?.handle.transport
-  const namespace = transport === undefined ? null : { transport, agent: validated.provider }
   return (
     chain !== null &&
-    chain.every(
-      (link) =>
-        namespace !== null && isAgentSessionProviderHandleInNamespace(link.handle, namespace)
-    ) &&
+    chain.every((link) => link.handle.agent === validated.provider) &&
+    (validated.providerContextBoundary === undefined ||
+      validated.providerContextBoundary.afterFence <= validated.lease.runtimeFence) &&
     (validated.lease.claimStatus !== 'live' ||
       (validated.lease.ownerProcess !== null &&
         head?.linkId === validated.lease.provenHandleLinkId &&

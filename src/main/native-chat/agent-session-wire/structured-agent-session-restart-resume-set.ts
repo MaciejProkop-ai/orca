@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../../shared/agent-session-provider-context'
 // Which durable teardown witnesses are still offers.
 //
 // The marker IS the answer to "was this chat working" AND the description of what it was doing:
@@ -14,10 +15,7 @@
 
 import type { AgentSessionAnyRefusalDetails } from '../../../shared/agent-session-wire-refusals'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
-import {
-  agentSessionProviderHandleChainHead,
-  agentSessionProviderHandleRoot
-} from '../../../shared/agent-session-provider-handle'
+import { agentSessionProviderHandleRoot } from '../../../shared/agent-session-provider-handle'
 import type {
   AgentSessionResumeFailureOutcome,
   AgentSessionResumeMarker,
@@ -113,6 +111,10 @@ export function structuredAgentSessionResumableSet(
     if (!record || !input.supportsRecord(record)) {
       continue
     }
+    if (record.providerContextBoundary?.operationId !== marker.contextClearOperationId) {
+      superseded.push(marker)
+      continue
+    }
     // The lease must be free and adjudicated. A contested or still-reconciling record is somebody
     // else's to resolve, and resuming into it is how a session gets two writers.
     if (input.leaseState !== 'may-be-held' && !isResumableStructuredAgentSessionRecord(record)) {
@@ -121,7 +123,7 @@ export function structuredAgentSessionResumableSet(
     // A conversation that FORKED since teardown is not the one we marked, and can never be again:
     // deleted, so it cannot sit unseen forever. Compared by identity root,
     // because a resume legitimately advances Claude's leaf and that is not a fork.
-    const head = agentSessionProviderHandleChainHead(record.providerHandleChain)
+    const head = activeProviderContext(record).head
     if (!head) {
       continue
     }

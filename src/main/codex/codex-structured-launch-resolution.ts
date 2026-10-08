@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 // How a durable session record becomes a Codex process launch.
 //
 // Every input is read back from the record the store already made durable, not
@@ -8,7 +9,6 @@
 
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session-journal-types'
 import { requireLegacyAgentSessionAccountHome } from '../../shared/agent-session-account-home'
-import { agentSessionProviderHandleChainHead } from '../../shared/agent-session-provider-handle'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { resolveCodexCommand } from '../codex-cli/command'
 import type { AgentSessionRecordStore } from '../runtime/agent-session-record-store'
@@ -91,7 +91,7 @@ export function createCodexStructuredLaunchResolver(
     const { command, environment } = await resolveCodexStructuredInvocation(deps)
     const args = codexStructuredLaunchArgs(await deps.resolveLaunchArgs())
     const permissionPolicy = deps.resolvePermissionPolicy?.()
-    const head = agentSessionProviderHandleChainHead(record.providerHandleChain)
+    const head = activeProviderContext(record).head
     // A Codex record's chain holds only Codex handles; the attach admission refuses anything else.
     const resumeThreadId = head?.handle.nativeId ?? null
     // The same saved options every turn sends, so the thread and its turns name one model.

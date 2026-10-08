@@ -18288,6 +18288,7 @@
         "recorded": "Totales de las ediciones registradas en este turno."
       },
       "notices": {
+        "contextCleared": "Contexto borrado",
         "compaction": "Contexto compactado",
         "details": "Detalles",
         "plan": "Plan",

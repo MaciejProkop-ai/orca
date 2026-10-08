@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../../shared/agent-session-provider-context'
 // The one thing that starts a provider child for a send, the one thing that hands a message to
 // it, and the one thing that settles a queued message because of a start, a child or a leftover.
 //
@@ -270,7 +271,8 @@ export class StructuredAgentSessionDeliveryLoop {
     { refusal, diagnostic, argumentProblem }: RefusedStart
   ): StartFailure {
     // A conversation no agent ever ran, such as a cleared chat's, failed to start, not restart.
-    const newSession = this.deps.record(sessionId)?.providerHandleChain.length === 0
+    const record = this.deps.record(sessionId)
+    const newSession = record ? activeProviderContext(record).head === null : false
     return {
       startKey: null,
       cause: {
@@ -360,6 +362,7 @@ const ENDED_CHILD_FAILURE = {
   'user-stop': () => null,
   // The user closing this chat closes what was queued before it; see `closeWhatTheUserClosed`.
   'user-close': () => null,
+  'context-clear': () => null,
   // The host stopping the child is Orca's cause, never the provider's: a start that never finished.
   'host-stop': () => ({ failure: agentSessionFailureFact('hostStopped') }),
   exit: providerEndFailure,

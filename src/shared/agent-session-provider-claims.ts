@@ -1,9 +1,9 @@
 import {
-  agentSessionProviderContextStart,
   agentSessionProviderHandleRoot,
   type AgentSessionProviderHandle
 } from './agent-session-provider-handle'
 import type { AgentSessionRecord } from './agent-session-record'
+import { activeProviderContext } from './agent-session-provider-context'
 
 export type AgentSessionProviderClaim = {
   record: AgentSessionRecord
@@ -17,11 +17,11 @@ export function agentSessionProviderClaims(
 ): AgentSessionProviderClaim[] {
   const byRoot = new Map<string, Map<string, AgentSessionProviderClaim>>()
   for (const record of records) {
-    const start = agentSessionProviderContextStart(record.providerHandleChain)
-    for (const [index, link] of record.providerHandleChain.entries()) {
+    const active = new Set(activeProviderContext(record).handleChain.map((link) => link.linkId))
+    for (const link of record.providerHandleChain) {
       const root = agentSessionProviderHandleRoot(link.handle)
       const owners = byRoot.get(root) ?? new Map<string, AgentSessionProviderClaim>()
-      const claim = { record, handle: link.handle, archived: index < start }
+      const claim = { record, handle: link.handle, archived: !active.has(link.linkId) }
       const prior = owners.get(record.sessionId)
       if (!prior || !claim.archived) {
         owners.set(record.sessionId, claim)

@@ -469,11 +469,11 @@ export type AgentSessionOptionsResult = {
    *  `agentSession.threadGoal` never offers the controls. `current` is the
    *  latest goal the whole journal records, for a client whose loaded page
    *  starts after it. */
-  threadGoal?: { current: AgentJournalThreadGoal | null }
+  threadGoal?: { current: AgentJournalThreadGoal | null; contextFloor?: AgentJournalCursor }
   /** Present only where this session writes context facts to its turn rows.
    *  `current` is the newest of each part the whole journal records, for a
    *  client whose loaded page starts after the row that carries it. */
-  contextUsage?: { current: AgentSessionContextUsage }
+  contextUsage?: { current: AgentSessionContextUsage; contextFloor?: AgentJournalCursor }
   models: AgentSessionModelOption[]
   /** Session/account/transport support. Absent means unknown, never unsupported. */
   fastModeSupport?: AgentSessionFastModeSupport

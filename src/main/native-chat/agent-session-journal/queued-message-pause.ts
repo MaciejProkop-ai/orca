@@ -38,6 +38,7 @@ export type JournalStopFailedOn = { turnId: string } | { openedAfter: number }
 /** The latest Stop event, whatever its reason, the latest Resume row and the latest reopen mark,
  *  folded by the reducer. */
 export type JournalQueuePauseMarks = {
+  cleared?: { sequence: number; operationId: string; messageIds: readonly string[]; lifted?: true }
   latestStop: { sequence: number; event: JournalStopEvent; settle?: JournalStopSettle } | null
   /** 0 when none. */
   resumedSequence: number
@@ -50,9 +51,11 @@ export type DerivedQueuePause = {
   /** Where a Stop's or a reopen's pause began: a card queued at or after it is newer. Null for
    *  /clear's, which holds the cards it carried. */
   since: AgentJournalCursor | null
+  messageIds?: readonly string[]
 }
 
 type QueueCard = {
+  messageId?: string
   state: string
   holdReason: string | null
   carriedFrom: string | null
@@ -89,7 +92,25 @@ export function foldJournalQueuePauseMark(
     const since = row.queueReopenSince
     const start = typeof since === 'number' && since > 0 && since <= row.seq ? since : row.seq
     marks.reopenedSequence = Math.max(marks.reopenedSequence, start)
+  } else if (isReadableQueueClear(row.queueClear)) {
+    marks.cleared = { ...row.queueClear, sequence: row.seq }
   }
+}
+
+function isReadableQueueClear(
+  value: unknown
+): value is NonNullable<JournalTombstoneRow['queueClear']> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'operationId' in value &&
+    typeof value.operationId === 'string' &&
+    value.operationId.length > 0 &&
+    'messageIds' in value &&
+    Array.isArray(value.messageIds) &&
+    value.messageIds.every((id: unknown) => typeof id === 'string' && id.length > 0) &&
+    (!('lifted' in value) || value.lifted === true)
+  )
 }
 
 /** A person's Stop still pauses: it is the latest Stop, and no turn accepted since, and no
@@ -119,6 +140,7 @@ export type JournalQueuePauseRestatement = {
   lifted: boolean
   liveStop: JournalStopEvent | null
   reopened: boolean
+  cleared?: { operationId: string; messageIds: string[]; lifted?: true }
 }
 
 export function journalQueuePauseRestatement(
@@ -129,7 +151,19 @@ export function journalQueuePauseRestatement(
   return {
     lifted: latestAcceptedTurnSequence > 0 || marks.resumedSequence > 0,
     liveStop: journalUserStopInForce(marks, latestAcceptedTurnSequence)?.event ?? null,
-    reopened: pauses.some((pause) => pause.reason === 'restarted')
+    reopened: pauses.some((pause) => pause.reason === 'restarted'),
+    ...(marks.cleared
+      ? {
+          cleared: {
+            operationId: marks.cleared.operationId,
+            messageIds: [...(pauses.find((pause) => pause.reason === 'cleared')?.messageIds ?? [])],
+            ...(marks.cleared.lifted ||
+            Math.max(latestAcceptedTurnSequence, marks.resumedSequence) >= marks.cleared.sequence
+              ? { lifted: true as const }
+              : {})
+          }
+        }
+      : {})
   }
 }
 
@@ -151,7 +185,25 @@ export function deriveQueuePauses(input: {
   }
   const waiting = input.cards.filter((card) => card.state === 'waiting')
   const carried = waiting.filter((card) => card.carriedFrom !== null)
-  if (carried.length > 0 && latestAcceptedTurnSequence === 0 && marks.resumedSequence === 0) {
+  const cleared = marks.cleared
+  if (
+    cleared &&
+    !cleared.lifted &&
+    cleared.sequence > Math.max(latestAcceptedTurnSequence, marks.resumedSequence)
+  ) {
+    const membership = new Set(cleared.messageIds)
+    const messageIds = waiting.flatMap((card) =>
+      card.messageId && membership.has(card.messageId) ? [card.messageId] : []
+    )
+    if (messageIds.length > 0) {
+      pauses.push({ reason: 'cleared', since: { epoch, sequence: cleared.sequence }, messageIds })
+    }
+  } else if (
+    !cleared &&
+    carried.length > 0 &&
+    latestAcceptedTurnSequence === 0 &&
+    marks.resumedSequence === 0
+  ) {
     pauses.push({ reason: 'cleared', since: null })
   }
   const reopened = reopenPause(input)
@@ -191,7 +243,9 @@ function reopenPause(input: {
  *  no position counts as before. A withdrawn steer keeps its position, so is held. */
 function queuedBefore(pause: DerivedQueuePause, card: QueueCard): boolean {
   if (pause.reason === 'cleared') {
-    return card.carriedFrom !== null
+    return pause.messageIds
+      ? pause.messageIds.includes(card.messageId ?? '')
+      : card.carriedFrom !== null
   }
   const { since } = pause
   return (

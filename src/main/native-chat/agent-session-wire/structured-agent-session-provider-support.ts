@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../../shared/agent-session-provider-context'
 import type {
   AgentSessionExecutionLocation,
   AgentSessionRecord
@@ -37,13 +38,16 @@ export function adapterSupportsCreateIfDeclared(
  *  only starting its agent is refused, by the one launch admission every agent passes through. */
 export function agentDrivesSession(
   agents: Pick<StructuredAgentRegistry, 'definition'>,
-  session: Pick<AgentSessionRecord, 'provider' | 'accountHome' | 'providerHandleChain'>
+  session: Pick<
+    AgentSessionRecord,
+    'provider' | 'accountHome' | 'providerHandleChain' | 'providerContextBoundary'
+  >
 ): boolean {
   const definition = agents.definition(session.provider)
   return (
     definition !== null &&
     agentPinsAccountHome(definition, session.accountHome) &&
-    session.providerHandleChain.every(
+    activeProviderContext(session).handleChain.every(
       ({ handle }) =>
         handle.transport === definition.handleTransport && handle.agent === definition.agent
     )

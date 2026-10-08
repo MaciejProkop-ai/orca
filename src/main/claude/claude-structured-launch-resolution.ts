@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 import { getClaudeProfileRouter } from '../claude-accounts/claude-profile-installed-router'
 import { requireLegacyAgentSessionAccountHome } from '../../shared/agent-session-account-home'
 import type {
@@ -5,10 +6,7 @@ import type {
   PermissionMode
 } from '@anthropic-ai/claude-agent-sdk'
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session-journal-types'
-import {
-  agentSessionProviderHandleChainHead,
-  agentSessionProviderHandleRoot
-} from '../../shared/agent-session-provider-handle'
+import { agentSessionProviderHandleRoot } from '../../shared/agent-session-provider-handle'
 import { claudeProviderHandleLeafUuid } from '../../shared/agent-session-provider-handle-encoding'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import { structuredSessionChildIdentityEnv } from '../runtime/structured-session-child-identity-env'
@@ -206,7 +204,8 @@ export function createClaudeStructuredLaunchResolver(
     }
     const router = getClaudeProfileRouter()
     // A Claude record's chain holds only Claude handles; the attach admission refuses anything else.
-    const head = agentSessionProviderHandleChainHead(record.providerHandleChain)?.handle ?? null
+    const active = activeProviderContext(record)
+    const head = active.head?.handle ?? null
     if (
       head &&
       (!identity.providerHandle ||
@@ -217,7 +216,10 @@ export function createClaudeStructuredLaunchResolver(
     }
     const providerSessionId = head
       ? head.nativeId
-      : claudeSessionIdForOrcaSession(identity.sessionId)
+      : claudeSessionIdForOrcaSession(
+          identity.sessionId,
+          active.pendingClear ? record.providerContextBoundary?.operationId : undefined
+        )
     const continuesChain = head !== null
     const cwd = await resolveAgentSessionLaunchDirectory(deps, record)
     const sources = await resolveClaudeChildEnvSources(deps)
@@ -256,7 +258,7 @@ export function createClaudeStructuredLaunchResolver(
     // one exits; launch that id fresh instead. With a transcript, `--session-id` would collide.
     const leafUuid = head ? claudeProviderHandleLeafUuid(head) : null
     const resumesTranscript =
-      head !== null &&
+      (head !== null || active.pendingClear) &&
       (await claudeLaunchResumesTranscript({
         router,
         leafUuid,

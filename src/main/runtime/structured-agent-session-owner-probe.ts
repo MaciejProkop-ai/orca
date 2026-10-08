@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 import type { AgentSessionOwnerProbe } from '../../shared/agent-session-lease-adjudication'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
 import {
@@ -100,5 +101,5 @@ export function createStructuredAgentSessionOwnerProbes(
  * the token scan rather than trusted alone.
  */
 function agentSessionReservationTouchedProvider(record: AgentSessionRecord): boolean {
-  return record.providerHandleChain.at(-1)?.mintedAtFence === record.lease.runtimeFence
+  return activeProviderContext(record).head?.mintedAtFence === record.lease.runtimeFence
 }

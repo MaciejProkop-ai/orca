@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 /**
  * Reservation admission: what a reserve request means against the persisted state.
  *
@@ -196,7 +197,7 @@ export function applyAgentSessionReservation(
   // A create may take over only a record that never bound a conversation and whose last
   // attempt is proven gone: that is the same as creating it fresh, under a fresh provider id.
   const recreatable =
-    existing.providerHandleChain.length === 0 &&
+    activeProviderContext(existing).head === null &&
     !request.adoptedHandleLink &&
     agentSessionLeaseOwnerVerdict(existing.lease) === 'exited'
   if (request.expectedFence === null && !recreatable) {

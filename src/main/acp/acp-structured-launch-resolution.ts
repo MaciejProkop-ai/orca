@@ -1,3 +1,4 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 // How a durable session record becomes an ACP agent launch, on the machine this runtime runs on.
 //
 // Every input is read back from the record the store made durable, never from the call that
@@ -9,7 +10,6 @@ import { homedir } from 'node:os'
 import type { AgentSessionJournalIdentity } from '../../shared/agent-session-journal-types'
 import { parseAgentJournalItemKey } from '../../shared/agent-session-journal-item-key'
 import {
-  agentSessionProviderHandleChainHead,
   agentSessionProviderHandleKey,
   type AgentSessionProviderHandleChain
 } from '../../shared/agent-session-provider-handle'
@@ -153,7 +153,7 @@ export function createAcpStructuredLaunchResolver(
       })
     }
     const fullAccess = deps.resolveFullAccess?.(spec.agent) ?? false
-    const head = agentSessionProviderHandleChainHead(record.providerHandleChain)
+    const head = activeProviderContext(record).head
     return {
       spec,
       command,

@@ -66,10 +66,7 @@ export function providerHandleLinkFollows(
   head: AgentSessionProviderHandleLink,
   link: AgentSessionProviderHandleLink
 ): boolean {
-  if (
-    !isAgentSessionProviderHandleInNamespace(link.handle, head.handle) ||
-    link.mintedAtFence < head.mintedAtFence
-  ) {
+  if (!providerHandleNamespacesContinue(head, link) || link.mintedAtFence < head.mintedAtFence) {
     return false
   }
   const sameRoot =
@@ -87,5 +84,17 @@ export function providerHandleLinkFollows(
       agentSessionProviderHandlesEqual(link.handle, head.handle) &&
       link.mintedAtFence === head.mintedAtFence
     )
+  )
+}
+
+export function providerHandleNamespacesContinue(
+  head: AgentSessionProviderHandleLink,
+  link: AgentSessionProviderHandleLink
+): boolean {
+  return (
+    isAgentSessionProviderHandleInNamespace(link.handle, head.handle) ||
+    (link.origin === 'created' &&
+      link.replaces?.reason === 'context-cleared' &&
+      link.handle.agent === head.handle.agent)
   )
 }

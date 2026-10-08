@@ -1,5 +1,5 @@
+import { activeProviderContext } from '../../../shared/agent-session-provider-context'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
-import { agentSessionProviderHandleChainHead } from '../../../shared/agent-session-provider-handle'
 import type { AgentProviderSessionMetadata } from '../../../shared/agent-session-resume'
 import type {
   AgentSessionHistoryRequest,
@@ -14,7 +14,7 @@ import {
 export function structuredAgentSessionProviderSessionMetadata(
   record: AgentSessionRecord | null
 ): AgentProviderSessionMetadata | undefined {
-  const head = record ? agentSessionProviderHandleChainHead(record.providerHandleChain) : null
+  const head = record ? activeProviderContext(record).head : null
   return head ? { key: 'session_id', id: head.handle.nativeId } : undefined
 }
 

@@ -105,6 +105,29 @@ describe('codex structured launch resolution', () => {
     }
   )
 
+  it('starts a new thread after clear without resolving the old rollout', async () => {
+    const resolveRollout = vi.fn(async () => '/old/rollout.jsonl')
+    const value = record({
+      providerContextBoundary: { operationId: 'clear', afterFence: 2, clearedAt: 100 },
+      providerHandleChain: [
+        {
+          linkId: 'old',
+          origin: 'created',
+          mintedAtFence: 1,
+          observedAt: 1,
+          handle: codexProviderHandle('old-thread')
+        }
+      ]
+    })
+    const launch = await resolverFor(
+      value,
+      undefined,
+      resolveRollout
+    )({ identity: { ...IDENTITY, providerHandle: codexProviderHandle('old-thread') } })
+    expect(launch.resumeThreadId).toBeNull()
+    expect(resolveRollout).not.toHaveBeenCalled()
+  })
+
   it('resumes a floating session in its pinned folder, not the current floating setting', async () => {
     const pinned = mkdtempSync(join(tmpdir(), 'orca-codex-floating-'))
     const resolveWorkspacePath = vi.fn(async () => '/floating/current-setting')

@@ -2,12 +2,12 @@ import {
   agentChildWorkViewOffersStop,
   type AgentSessionBackgroundTaskStops
 } from '../../../shared/agent-child-work-stop-targets'
-import type { AgentSessionConversationCommandRecord } from '../../../shared/agent-session-conversation-command'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
 import { isQueuedAgentJournalSubmission } from '../../../shared/agent-session-queued-submission'
 import { agentChildWorkLiveness } from '../../../shared/agent-status-child-work-liveness'
 import type { AgentChildWorkView } from '../../../shared/agent-status-child-work-view'
 import { activeStructuredAgentSessionTurnId } from '../../../shared/structured-agent-session-projection'
+import { agentSessionCurrentContextRows } from '../../../shared/agent-session-context-clear'
 import type { AgentSessionJournal } from '../agent-session-journal/journal-store'
 import type { StructuredAgentSessionAdapter } from './structured-agent-session-adapter'
 import {
@@ -34,26 +34,6 @@ function blocked(
   return refuse('agent_session_operation_invalid', { reason }, message)
 }
 
-/**
- * The /clear this caller committed on a conversation whose tab has since moved to its replacement.
- * A /clear it presses there again asks for what that one already did; any other caller, or a
- * cleared conversation opened again from history, reads `conversationCleared` instead.
- */
-export function committedClearOfCaller(
-  record: AgentSessionRecord | null,
-  callerKey: string,
-  tabId: string | null
-): AgentSessionConversationCommandRecord | null {
-  const command = record?.conversationCommand
-  return command?.command === 'clear' &&
-    command.phase === 'committed' &&
-    command.replacementSessionId &&
-    command.callerKey === callerKey &&
-    tabId === null
-    ? command
-    : null
-}
-
 export function conversationCommandInFlight(): AgentSessionWireRefusal {
   return blocked('conversationCommandInFlight', 'Wait for the conversation operation to finish.')
 }
@@ -73,19 +53,12 @@ export function conversationCommandBlocked(
   childWork: readonly AgentChildWorkView[] | undefined,
   admission?: 'at-rest' | 'handover'
 ): AgentSessionWireRefusal | null {
-  const items = ctx.journal.snapshot().items
+  const { items, submissions } = agentSessionCurrentContextRows(
+    ctx.journal.snapshot().items,
+    ctx.journal.submissions()
+  )
   if (record.rewind?.phase === 'prepared' || record.rewind?.phase === 'provider-succeeded') {
     return blocked('rewindUnconfirmed', 'agent_session_rewind:outcome-unknown')
-  }
-  if (
-    record.conversationCommand?.command === 'clear' &&
-    record.conversationCommand.phase === 'committed' &&
-    record.conversationCommand.replacementSessionId
-  ) {
-    return blocked(
-      'conversationCleared',
-      'This conversation has been cleared. Open the current conversation to continue.'
-    )
   }
   if (record.lease.handoffStage || record.lease.handoffOperationId) {
     return blocked('handoffInFlight', 'Wait for the session handoff to finish.')
@@ -115,7 +88,7 @@ export function conversationCommandBlocked(
     )
   }
   if (
-    ctx.journal.submissions().some(
+    submissions.some(
       (entry) =>
         (entry.dispatchState === 'pending' &&
           !(admission === 'handover' && isQueuedAgentJournalSubmission(entry))) ||

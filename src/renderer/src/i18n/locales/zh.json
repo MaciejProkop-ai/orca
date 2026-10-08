@@ -18172,6 +18172,7 @@
         "cancelledBy": "于 {{device}} 取消"
       },
       "notices": {
+        "contextCleared": "上下文已清除",
         "compaction": "上下文压缩",
         "details": "细节",
         "plan": "计划",

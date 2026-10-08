@@ -1,3 +1,5 @@
+import { agentSessionCurrentContextRows } from '../../../shared/agent-session-context-clear'
+import { activeProviderContext } from '../../../shared/agent-session-provider-context'
 // Whether a session was genuinely working when this process stopped it, and what it was doing.
 //
 // Read off the LIVE host state, never off a persisted status field. That distinction is the whole
@@ -12,10 +14,7 @@
 // prompts and the live child roster — because that fact exists only here: once reattached, the
 // provider rewrites the journal in its own words.
 
-import {
-  agentSessionProviderHandleChainHead,
-  agentSessionProviderHandleRoot
-} from '../../../shared/agent-session-provider-handle'
+import { agentSessionProviderHandleRoot } from '../../../shared/agent-session-provider-handle'
 import { latestStructuredAgentSessionUserItem } from '../../../shared/structured-agent-session-latest-request'
 import { isQueuedAgentJournalSubmission } from '../../../shared/agent-session-queued-submission'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
@@ -75,11 +74,12 @@ export function structuredAgentSessionWorkInFlight(
   items: readonly AgentJournalRenderItem[],
   submissions: readonly AgentJournalSubmission[]
 ): AgentSessionResumeWork | null {
-  const turnId = activeStructuredAgentSessionTurnId(items)
+  const current = agentSessionCurrentContextRows(items, submissions)
+  const turnId = activeStructuredAgentSessionTurnId(current.items)
   if (turnId) {
     return { kind: 'turn', id: turnId }
   }
-  const submission = pendingSubmissionInFlight(submissions)
+  const submission = pendingSubmissionInFlight(current.submissions)
   return submission ? { kind: 'submission', id: submission.clientMessageId } : null
 }
 
@@ -185,27 +185,27 @@ export function structuredAgentSessionWorkingAtStop(input: {
     return null
   }
   const snapshot = session.journal.snapshot()
+  const current = agentSessionCurrentContextRows(snapshot.items, snapshot.submissions)
   // A queued message reached no agent, and one handed to a start that never answered ran nowhere:
   // neither is work to resume. The next open or the exit keeps it as unsent.
   const unanswered = input.startAnswered?.(sessionId) === false
-  const handedOver = snapshot.submissions.filter(
+  const handedOver = current.submissions.filter(
     (submission) =>
       !isQueuedAgentJournalSubmission(submission) &&
       !(unanswered && isUnansweredHandedOverSubmission(submission))
   )
   const childWork = input.childWork(sessionId)
   const status = structuredAgentSessionShownStatus(
-    { items: snapshot.items, submissions: handedOver },
+    { items: current.items, submissions: handedOver },
     childWork,
     session.child.fence
   )
   if (status.state === 'done') {
     return null
   }
-  const work = structuredAgentSessionResumeWork(snapshot.items, handedOver)
-  const head = agentSessionProviderHandleChainHead(
-    input.getRecord(sessionId)?.providerHandleChain ?? []
-  )
+  const work = structuredAgentSessionResumeWork(current.items, handedOver)
+  const record = input.getRecord(sessionId)
+  const head = record ? activeProviderContext(record).head : null
   if (!work || !head) {
     return null
   }
@@ -213,17 +213,20 @@ export function structuredAgentSessionWorkingAtStop(input: {
     // The lead's OWN state, not the fold: a settled lead with running children reads `done` here
     // and carries them in `tasks`, which is how the dialog tells the two apart.
     state: status.mainAgent.state,
-    prompts: pendingPrompts(snapshot.items),
+    prompts: pendingPrompts(current.items),
     tasks: liveTasks(childWork)
   }
   return {
     sessionId,
     work,
-    latestUserItemId: latestStructuredAgentSessionUserItem(snapshot.items)?.itemId ?? null,
+    latestUserItemId: latestStructuredAgentSessionUserItem(current.items)?.itemId ?? null,
     recordedAt: input.now,
     trigger: input.trigger,
     teardownId: input.teardownId,
     journalCursor: snapshot.cursor,
+    ...(record?.providerContextBoundary
+      ? { contextClearOperationId: record.providerContextBoundary.operationId }
+      : {}),
     // Root, not key: the close path advances Claude's leaf moments after this runs, and a key
     // comparison would then refuse the session forever.
     providerHandleRoot: agentSessionProviderHandleRoot(head.handle),

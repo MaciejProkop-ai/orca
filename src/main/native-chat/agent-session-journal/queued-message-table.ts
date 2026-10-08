@@ -74,7 +74,6 @@ export function insertQueuedMessage(
     body: AgentJournalMessageItem
     fingerprint: string
     hostInstance: string
-    carriedFrom?: string
     queuedAt: AgentJournalCursor
     now: number
     /** Absent: after every other card. */
@@ -99,7 +98,7 @@ export function insertQueuedMessage(
     input.now,
     input.hostInstance,
     input.holdReason ?? null,
-    input.carriedFrom ?? null,
+    null,
     input.queuedAt.epoch,
     input.queuedAt.sequence
   )
@@ -118,7 +117,7 @@ export function insertQueuedMessage(
     settledAt: null,
     settledByOp: null,
     consumedAs: null,
-    carriedFrom: input.carriedFrom ?? null,
+    carriedFrom: null,
     queuedAt: input.queuedAt
   }
 }

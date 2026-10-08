@@ -18273,6 +18273,7 @@
         "cancelledBy": "Annulé le {{device}}"
       },
       "notices": {
+        "contextCleared": "Contexte effacé",
         "compaction": "Contexte compacté",
         "details": "Détails",
         "plan": "Plan",

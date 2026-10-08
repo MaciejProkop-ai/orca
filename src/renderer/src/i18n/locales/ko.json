@@ -18207,6 +18207,7 @@
         "cancelledBy": "{{device}}에 취소됨"
       },
       "notices": {
+        "contextCleared": "컨텍스트 지워짐",
         "compaction": "컨텍스트가 압축됨",
         "details": "세부",
         "plan": "계획",

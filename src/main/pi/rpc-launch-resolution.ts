@@ -1,9 +1,9 @@
+import { activeProviderContext } from '../../shared/agent-session-provider-context'
 import { open, realpath } from 'node:fs/promises'
 import { isAbsolute, normalize } from 'node:path'
 import { z } from 'zod'
 import { agentSessionRefusalError } from '../../shared/agent-session-wire-refusals'
 import {
-  agentSessionProviderHandleChainHead,
   agentSessionProviderHandleKey,
   type AgentSessionProviderHandleLink
 } from '../../shared/agent-session-provider-handle'
@@ -134,7 +134,7 @@ export function createPiRpcLaunchResolver(
       }
     }
     env.PI_CODING_AGENT_DIR = accountHome.path
-    const previous = agentSessionProviderHandleChainHead(record.providerHandleChain)
+    const previous = activeProviderContext(record).head
     let sessionFile: string | undefined
     let forkFile: string | undefined
     let replacement: PiRpcResolvedLaunch['replacement']
