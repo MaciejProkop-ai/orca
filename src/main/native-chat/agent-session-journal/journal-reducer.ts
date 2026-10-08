@@ -62,8 +62,7 @@ export type JournalReducerState = {
   appliedSettlementIds: Set<string>
   /** Scope for rows stored without one; rebuilt by replay, never persisted. */
   derivedTurnScope: JournalDerivedTurnScope
-  /** The submission row of the latest turn the provider accepted, whoever sent it; 0 when none.
-   *  Kept as it folds so the queue's pause reads it in O(1). */
+  /** Latest actual acceptance in this epoch, even when its message is rewound away; 0 when none. */
   latestAcceptedTurnSequence: number
   /** The latest person's Stop event and Resume, what the queue's pause is derived from. */
   queuePauseMarks: JournalQueuePauseMarks

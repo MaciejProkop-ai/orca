@@ -14,10 +14,6 @@ import type {
 } from './structured-mailbox-pointer-delivery'
 import type { AgentJournalSnapshot } from '../../../shared/agent-session-journal-types'
 import {
-  agentSessionCurrentContextRows,
-  latestAgentSessionContextClearSequence
-} from '../../../shared/agent-session-context-clear'
-import {
   structuredSessionGateFacts,
   type StructuredSessionGateFacts
 } from './structured-session-pointer-delivery'
@@ -62,12 +58,12 @@ async function readPointerSessionFacts(
   if (!snapshot) {
     return null
   }
-  const sequence = latestAgentSessionContextClearSequence(snapshot.items)
-  const marker = snapshot.items.find((item) => item.sequence === sequence)
-  const boundary = marker?.body?.kind === 'status' ? marker.body.contextClear : undefined
+  const boundary =
+    getStructuredAgentSessionHost()?.deps.store.getRecord(sessionId)?.providerContextBoundary
   return {
-    submissions: agentSessionCurrentContextRows(snapshot.items, snapshot.submissions).submissions,
-    ...(boundary ? { contextClearOperationId: boundary.operationId } : {})
+    submissions: boundary
+      ? snapshot.submissions.filter((submission) => submission.fence > boundary.afterFence)
+      : snapshot.submissions
   }
 }
 

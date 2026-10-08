@@ -105,6 +105,35 @@ function harness(options: {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('structured mailbox pointer delivery', () => {
+  it.each(['rejected', 'unknown', 'throws'] as const)(
+    'attempts an unchanged record context once when its journal has no marker and send is %s',
+    async (outcome) => {
+      const { delivery, send, readContext, stored, markAsDelivered } = harness({})
+      let contextReads = 0
+      readContext.mockImplementation(() => {
+        if (++contextReads > 8) {
+          throw new Error('hard regression-test cap on context reads')
+        }
+        return 'record-clear-1'
+      })
+      send.mockImplementation(async () => {
+        if (outcome === 'throws') {
+          throw new Error('send failed')
+        }
+        return { kind: 'sent', state: outcome }
+      })
+      delivery.deliverForHandle('dispatch:d1')
+      await flush()
+      await flush()
+      expect(send).toHaveBeenCalledTimes(1)
+      expect(contextReads).toBeLessThan(8)
+      expect(markAsDelivered).not.toHaveBeenCalled()
+      expect(stored.get('dispatch:d1')?.batch_fingerprint).toBe(
+        structuredPointerBatchFingerprint(IDENTITY.sessionId, ['m1'], 'record-clear-1')
+      )
+    }
+  )
+
   it('claims only mailboxes whose assignee is a structured worker', () => {
     const { delivery } = harness({})
     expect(delivery.deliverForHandle('dispatch:d1')).toBe(true)
@@ -545,7 +574,7 @@ describe('a mailbox a /clear moves while its nudge is in flight', () => {
       getCliCommand: () => 'orca-dev',
       senderName: () => null,
       host: {
-        readSessionFacts: async () => ({ submissions: [], contextClearOperationId }),
+        readSessionFacts: async () => ({ submissions: [] }),
         currentFence: () => 4,
         currentContextClearOperationId: () => contextClearOperationId,
         send

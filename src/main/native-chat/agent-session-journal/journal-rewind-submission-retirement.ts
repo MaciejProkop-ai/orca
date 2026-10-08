@@ -13,13 +13,4 @@ export function retireRewoundJournalSubmission(state: JournalReducerState, itemI
       state.aliases.delete(providerItemId)
     }
   }
-  state.latestAcceptedTurnSequence = 0
-  for (const submission of state.submissions.values()) {
-    if (submission.dispatchState === 'accepted') {
-      state.latestAcceptedTurnSequence = Math.max(
-        state.latestAcceptedTurnSequence,
-        submission.acceptedSequence ?? 0
-      )
-    }
-  }
 }

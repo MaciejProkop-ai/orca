@@ -38,6 +38,24 @@ function transcript(count: number): AgentJournalRenderItem[] {
   )
 }
 
+function pointerSubmission(
+  clientMessageId: string,
+  fence: number,
+  acceptedSequence: number
+): AgentJournalSubmission {
+  return {
+    clientMessageId,
+    acceptedSequence,
+    submittedAt: 1_000,
+    fence,
+    payloadFingerprint: 'fp',
+    dispatchState: 'pending',
+    providerItemId: null,
+    reason: null,
+    resolvedAt: null
+  }
+}
+
 const NOTICE_SOURCE: AgentMessageSource = {
   kind: 'agent',
   senders: [],
@@ -64,13 +82,16 @@ describe('structured mailbox pointer host', () => {
 
   it("reads what the session's sends settled as", async () => {
     const submissions = [{ clientMessageId: 'op1', dispatchState: 'unknown' }]
-    hostRef.current = { journalSnapshot: () => ({ items: [], submissions }) }
+    hostRef.current = {
+      deps: { store: { getRecord: () => null } },
+      journalSnapshot: () => ({ items: [], submissions })
+    }
     expect(await createStructuredMailboxPointerHost().readSessionFacts('s1')).toEqual({
       submissions
     })
   })
 
-  it('reads only current-context pointer settlements and the committed clear identity', async () => {
+  it('scopes settlements to the record fence when the journal marker disagrees', async () => {
     const items: AgentJournalRenderItem[] = [
       {
         itemId: 'clear-marker',
@@ -80,40 +101,40 @@ describe('structured mailbox pointer host', () => {
         body: {
           kind: 'status',
           text: 'Context cleared',
-          contextClear: { operationId: 'clear-1', afterFence: 2, clearedAt: 1_000 }
+          contextClear: { operationId: 'clear-old', afterFence: 1, clearedAt: 1_000 }
         }
       }
     ]
-    const submission = (
-      clientMessageId: string,
-      acceptedSequence: number
-    ): AgentJournalSubmission => ({
-      clientMessageId,
-      acceptedSequence,
-      submittedAt: 1_000,
-      fence: 2,
-      payloadFingerprint: 'fp',
-      dispatchState: 'pending',
-      providerItemId: null,
-      reason: null,
-      resolvedAt: null
-    })
-    const current = submission('current', 6)
-    hostRef.current = {
-      journalSnapshot: () => ({ items, submissions: [submission('earlier', 4), current] })
-    }
-    expect(await createStructuredMailboxPointerHost().readSessionFacts('s1')).toEqual({
-      submissions: [current],
-      contextClearOperationId: 'clear-1'
-    })
+    const current = pointerSubmission('current', 3, 4)
     hostRef.current = {
       deps: {
-        store: { getRecord: () => ({ providerContextBoundary: { operationId: 'clear-1' } }) }
-      }
+        store: {
+          getRecord: () => ({ providerContextBoundary: { operationId: 'clear-1', afterFence: 2 } })
+        }
+      },
+      journalSnapshot: () => ({ items, submissions: [pointerSubmission('earlier', 2, 6), current] })
     }
-    expect(createStructuredMailboxPointerHost().currentContextClearOperationId('s1')).toBe(
-      'clear-1'
-    )
+    const host = createStructuredMailboxPointerHost()
+    expect(await host.readSessionFacts('s1')).toEqual({ submissions: [current] })
+    expect(host.currentContextClearOperationId('s1')).toBe('clear-1')
+  })
+
+  it('keeps the record context when an older rewind removed its journal marker', async () => {
+    const current = pointerSubmission('current', 3, 1)
+    hostRef.current = {
+      deps: {
+        store: {
+          getRecord: () => ({ providerContextBoundary: { operationId: 'clear-1', afterFence: 2 } })
+        }
+      },
+      journalSnapshot: () => ({
+        items: [],
+        submissions: [pointerSubmission('earlier', 2, 2), current]
+      })
+    }
+    const host = createStructuredMailboxPointerHost()
+    expect(await host.readSessionFacts('s1')).toEqual({ submissions: [current] })
+    expect(host.currentContextClearOperationId('s1')).toBe('clear-1')
   })
 
   it('answers null rather than nothing recorded when the session cannot be read', async () => {

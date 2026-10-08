@@ -57,7 +57,6 @@ export type StructuredPointerSendOutcome =
 export type StructuredPointerSessionFacts = {
   /** Current-context sends, oldest first: what the lane's own sends settled as. */
   submissions: readonly StructuredPointerSubmission[]
-  contextClearOperationId?: string
 }
 
 export type StructuredMailboxPointerHost = {
@@ -190,24 +189,37 @@ export class OrchestrationStructuredMailboxPointerDelivery<
       return
     }
     this.inFlight.add(mailboxHandle)
-    let contextClearOperationId: string | undefined
+    let contextKey: string | undefined
     try {
-      contextClearOperationId = this.deps.host.currentContextClearOperationId(target.sessionId)
       const session = await this.deps.host.readSessionFacts(target.sessionId)
-      if (session) {
-        contextClearOperationId = session.contextClearOperationId
+      const contextClearOperationId = this.deps.host.currentContextClearOperationId(
+        target.sessionId
+      )
+      contextKey = JSON.stringify([target.sessionId, contextClearOperationId])
+      if (attemptedContexts.has(contextKey)) {
+        return
       }
-      await this.attempt(db, mailboxHandle, target, unread, reservedTypes, session)
+      attemptedContexts.add(contextKey)
+      await this.attempt(
+        db,
+        mailboxHandle,
+        target,
+        unread,
+        reservedTypes,
+        session,
+        contextClearOperationId
+      )
     } finally {
       this.inFlight.delete(mailboxHandle)
       // A thrown attempt follows too; its own failure is what still propagates.
-      await this.followChangedContext(
-        mailboxHandle,
-        target,
-        contextClearOperationId,
-        reservedTypes,
-        attemptedContexts
-      ).catch(() => undefined)
+      if (contextKey !== undefined) {
+        await this.followChangedContext(
+          mailboxHandle,
+          target,
+          reservedTypes,
+          attemptedContexts
+        ).catch(() => undefined)
+      }
     }
   }
 
@@ -215,11 +227,9 @@ export class OrchestrationStructuredMailboxPointerDelivery<
   private async followChangedContext(
     mailboxHandle: string,
     attempted: StructuredPointerTarget,
-    attemptedClearOperationId: string | undefined,
     reservedTypes: ReadonlySet<string> | undefined,
     attemptedContexts: Set<string>
   ): Promise<void> {
-    attemptedContexts.add(JSON.stringify([attempted.sessionId, attemptedClearOperationId]))
     const current = this.deps.resolveStructuredTarget(mailboxHandle)
     if (
       !current ||
@@ -245,7 +255,8 @@ export class OrchestrationStructuredMailboxPointerDelivery<
     target: StructuredPointerTarget,
     unread: readonly MessageRow[],
     reservedTypes: ReadonlySet<string> | undefined,
-    session: StructuredPointerSessionFacts | null
+    session: StructuredPointerSessionFacts | null,
+    contextClearOperationId: string | undefined
   ): Promise<void> {
     const sessionId = target.sessionId
     if (!session) {
@@ -281,7 +292,7 @@ export class OrchestrationStructuredMailboxPointerDelivery<
       sessionId,
       messageIds: staged,
       submissions: session.submissions,
-      contextClearOperationId: session.contextClearOperationId,
+      contextClearOperationId,
       sentByThisProcess: this.sentOperationIds.get(mailboxHandle)
     })
     if (operation.kind === 'stamp') {
