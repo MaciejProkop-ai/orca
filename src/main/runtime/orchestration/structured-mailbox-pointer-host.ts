@@ -14,6 +14,10 @@ import type {
 } from './structured-mailbox-pointer-delivery'
 import type { AgentJournalSnapshot } from '../../../shared/agent-session-journal-types'
 import {
+  agentSessionCurrentContextRows,
+  latestAgentSessionContextClearSequence
+} from '../../../shared/agent-session-context-clear'
+import {
   structuredSessionGateFacts,
   type StructuredSessionGateFacts
 } from './structured-session-pointer-delivery'
@@ -55,7 +59,16 @@ async function readPointerSessionFacts(
   sessionId: string
 ): Promise<StructuredPointerSessionFacts | null> {
   const snapshot = await readSessionJournal(sessionId)
-  return snapshot ? { submissions: snapshot.submissions } : null
+  if (!snapshot) {
+    return null
+  }
+  const sequence = latestAgentSessionContextClearSequence(snapshot.items)
+  const marker = snapshot.items.find((item) => item.sequence === sequence)
+  const boundary = marker?.body?.kind === 'status' ? marker.body.contextClear : undefined
+  return {
+    submissions: agentSessionCurrentContextRows(snapshot.items, snapshot.submissions).submissions,
+    ...(boundary ? { contextClearOperationId: boundary.operationId } : {})
+  }
 }
 
 async function readSessionJournal(sessionId: string): Promise<AgentJournalSnapshot | null> {
@@ -85,6 +98,11 @@ export function createStructuredMailboxPointerHost(): StructuredMailboxPointerHo
       return (
         getStructuredAgentSessionHost()?.deps.store.getRecord(sessionId)?.lease.runtimeFence ?? null
       )
+    },
+
+    currentContextClearOperationId(sessionId) {
+      return getStructuredAgentSessionHost()?.deps.store.getRecord(sessionId)
+        ?.providerContextBoundary?.operationId
     },
 
     async send(input) {

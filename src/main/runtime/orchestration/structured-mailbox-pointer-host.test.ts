@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentJournalRenderItem } from '../../../shared/agent-session-journal-types'
+import type {
+  AgentJournalRenderItem,
+  AgentJournalSubmission
+} from '../../../shared/agent-session-journal-types'
 import type { AgentMessageSource } from '../../../shared/agent-session-message-source'
 
 const hostRef: { current: unknown } = { current: null }
@@ -65,6 +68,52 @@ describe('structured mailbox pointer host', () => {
     expect(await createStructuredMailboxPointerHost().readSessionFacts('s1')).toEqual({
       submissions
     })
+  })
+
+  it('reads only current-context pointer settlements and the committed clear identity', async () => {
+    const items: AgentJournalRenderItem[] = [
+      {
+        itemId: 'clear-marker',
+        revision: 1,
+        sequence: 5,
+        observedAt: 1_000,
+        body: {
+          kind: 'status',
+          text: 'Context cleared',
+          contextClear: { operationId: 'clear-1', afterFence: 2, clearedAt: 1_000 }
+        }
+      }
+    ]
+    const submission = (
+      clientMessageId: string,
+      acceptedSequence: number
+    ): AgentJournalSubmission => ({
+      clientMessageId,
+      acceptedSequence,
+      submittedAt: 1_000,
+      fence: 2,
+      payloadFingerprint: 'fp',
+      dispatchState: 'pending',
+      providerItemId: null,
+      reason: null,
+      resolvedAt: null
+    })
+    const current = submission('current', 6)
+    hostRef.current = {
+      journalSnapshot: () => ({ items, submissions: [submission('earlier', 4), current] })
+    }
+    expect(await createStructuredMailboxPointerHost().readSessionFacts('s1')).toEqual({
+      submissions: [current],
+      contextClearOperationId: 'clear-1'
+    })
+    hostRef.current = {
+      deps: {
+        store: { getRecord: () => ({ providerContextBoundary: { operationId: 'clear-1' } }) }
+      }
+    }
+    expect(createStructuredMailboxPointerHost().currentContextClearOperationId('s1')).toBe(
+      'clear-1'
+    )
   })
 
   it('answers null rather than nothing recorded when the session cannot be read', async () => {

@@ -119,6 +119,7 @@ export const SQLITE_RUNTIME_INCLUDE = [
   'src/main/native-chat/agent-session-wire/structured-agent-session-rewind-at-rest.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-rewind-live-send.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-rewind.test.ts',
+  'src/main/native-chat/agent-session-wire/structured-agent-session-clear-rewind.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-send-idempotency.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-send-open-stale-turn.test.ts',
   'src/main/native-chat/agent-session-wire/structured-agent-session-send-preparation.test.ts',

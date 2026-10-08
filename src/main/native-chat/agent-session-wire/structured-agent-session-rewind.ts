@@ -45,12 +45,15 @@ export async function rewindStructuredAgentSession(
       // Only the provider can do this, so an agent at rest is started first.
       prepareSession: openWithAgent(context, params.envelope, () => {
         const journal = context.sessions.get(sessionId)?.journal
-        if (journal?.cursor().epoch !== params.expectedEpoch) {
+        const floor = journal?.context.floor()
+        if (!journal || !floor) {
+          return { ok: true }
+        }
+        if (journal.cursor().epoch !== params.expectedEpoch) {
           return rewindRefusal('stale-epoch')
         }
-        const floor = journal.context.floor()
         const target = journal.snapshot().items.find((item) => item.itemId === params.itemId)
-        return floor && (!target || target.sequence <= floor.sequence)
+        return !target || target.sequence <= floor.sequence
           ? rewindRefusal('invalid-target')
           : { ok: true }
       }),
