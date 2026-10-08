@@ -325,6 +325,76 @@ describe('a chat tab across /clear', () => {
 })
 
 describe('other clients after a clear', () => {
+  it.each(['v1.4.222', 'fd9234eed1fecab614ab1a7d4a626587b8feaec6'])(
+    '%s mirrors the actual published tab without changing pane or conversation identity',
+    async (ref) => {
+      // Historical sources load at runtime, outside the host's TypeScript project.
+      const harnessPath = join(
+        import.meta.dirname,
+        '../../../../../tests/e2e/cross-version-wire/release-checkout.ts'
+      )
+      const harness = await import(/* @vite-ignore */ harnessPath)
+      if (
+        typeof harness.materializeReleaseCheckout !== 'function' ||
+        typeof harness.importReleaseCheckoutModule !== 'function'
+      ) {
+        throw new Error('historical checkout harness missing')
+      }
+      const checkout = await harness.materializeReleaseCheckout(ref)
+      vi.doMock(`${checkout.root}/src/renderer/src/runtime/web-runtime-session.ts`, () => ({
+        HOST_TERMINAL_SURFACE_SEPARATOR: '::',
+        WEB_TERMINAL_SURFACE_TAB_PREFIX: 'web-terminal:',
+        toWebTerminalSurfaceTabId: (id: string) => id
+      }))
+      vi.doMock(`${checkout.root}/src/renderer/src/runtime/runtime-terminal-stream.ts`, () => ({
+        getRemoteRuntimePtyEnvironmentId: () => null
+      }))
+      const module = await harness.importReleaseCheckoutModule(
+        checkout,
+        'src/renderer/src/runtime/web-session-tabs-sync/terminal-surfaces.ts'
+      )
+      const build = module.buildMirroredAgentTabs
+      if (typeof build !== 'function') {
+        throw new Error('historical agent tab mirror missing')
+      }
+      expect(await createChat(HOST_TEST_SESSION)).toMatchObject({ ok: true })
+      const localTabs = [
+        {
+          id: 'existing-local-pane',
+          entityId: HOST_TEST_SESSION,
+          contentType: 'agent-session',
+          agentSessionAgent: 'codex',
+          worktreeId: WORKTREE,
+          groupId: 'existing-local-group',
+          label: 'Codex Chat',
+          customLabel: 'My conversation',
+          color: null,
+          createdAt: HOST_TEST_NOW,
+          sortOrder: 0,
+          isPinned: true
+        }
+      ]
+      const mirror = async () =>
+        build(await snapshot(), 'remote-host', new Map(), 'fallback', 0, localTabs, HOST_TEST_NOW)
+      const before = await mirror()
+      await clear(HOST_TEST_SESSION)
+      expect(await mirror()).toEqual(before)
+      expect(await mirror()).toMatchObject([
+        {
+          hostTabId: `agent-session:${HOST_TEST_SESSION}`,
+          unifiedTab: {
+            id: 'existing-local-pane',
+            entityId: HOST_TEST_SESSION,
+            groupId: 'existing-local-group',
+            customLabel: 'My conversation',
+            isPinned: true
+          }
+        }
+      ])
+    },
+    300_000
+  )
+
   const capabilities = [
     STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY,
     CLAUDE_STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY

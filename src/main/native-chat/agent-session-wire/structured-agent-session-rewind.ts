@@ -61,6 +61,11 @@ export async function rewindStructuredAgentSession(
         method: 'agentSession.rewind',
         fields: { itemId: params.itemId, expectedEpoch: params.expectedEpoch },
         recoverUnknownFromDurableState: true,
+        settledOutcome: (rewind: AgentSessionRewindResult) => ({
+          status: 'succeeded' as const,
+          sessionId,
+          rewind
+        }),
         settlesWithWrite: true,
         successReceipt: () => ({
           write: (db) => completionReceipt!.write(db),

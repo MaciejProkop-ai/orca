@@ -58,12 +58,10 @@ export type MutationPlan<TValue> = {
   recoverUnknownFromDurableState?: boolean
 } & (
   | {
-      /** Its success is the row its run writes, so it commits in that row's transaction
-       *  (`AgentSessionTurnContext.operationReceipt`): a row left pending wrote nothing. That
-       *  success is fixed before the value exists, so it records no `settledOutcome`. */
+      /** Commits success with its row; paths without a committed receipt use fallback settlement. */
       settlesWithWrite: true
       successReceipt?: () => JournalOperationReceipt
-      settledOutcome?: never
+      settledOutcome?: (value: TValue) => AgentSessionOperationOutcome
     }
   | {
       settlesWithWrite?: never

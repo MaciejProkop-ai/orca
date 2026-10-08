@@ -17945,6 +17945,7 @@
         "commands": "命令",
         "skills": "技能",
         "loadingSkills": "正在加载技能…",
+        "clearDescription": "清除对话上下文",
         "skillsUnavailableHost": "SSH 聊天中无法列出技能",
         "skillsLoadFailed": "无法加载技能",
         "retrySkills": "重试",

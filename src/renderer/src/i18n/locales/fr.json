@@ -18006,6 +18006,7 @@
         "skills": "Skills",
         "loadingSkills": "Chargement des skills...",
         "skillsLoaded": "Skills chargées",
+        "clearDescription": "Effacer le contexte de la conversation",
         "skillsUnavailableHost": "Les skills ne peuvent pas être listées dans les chats SSH",
         "skillsLoadFailed": "Impossible de charger les skills",
         "retrySkills": "Réessayer",

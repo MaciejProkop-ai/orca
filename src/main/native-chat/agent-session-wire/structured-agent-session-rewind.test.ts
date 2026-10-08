@@ -188,6 +188,33 @@ async function params(itemId: string, epoch?: string) {
 }
 
 describe('host rewind', () => {
+  it('replays the original ordinary rewind after another rewind replaces its record', async () => {
+    const target = await seed()
+    const firstRequest = await params(target)
+    const first = await host.rewind(caller, firstRequest)
+    expect(first).toMatchObject({ ok: true })
+    const secondRequest = await params(
+      agentJournalItemKey({
+        provider: 'codex',
+        threadId: HOST_TEST_THREAD,
+        turnId: 'kept',
+        ordinal: 0
+      })
+    )
+    recoverRewind.mockResolvedValueOnce({ ok: true, items: [] })
+    expect(await host.rewind(caller, secondRequest)).toMatchObject({ ok: true })
+    expect(store.getRecord(HOST_TEST_SESSION)?.rewind?.operationId).toBe(
+      secondRequest.envelope.clientOperationId
+    )
+    const effects = rewind.mock.calls.length
+    const replay = await host.rewind(caller, firstRequest)
+    expect(replay).toMatchObject({ ok: true, replayed: true })
+    if (first.ok && replay.ok) {
+      expect(replay.value).toEqual(first.value)
+    }
+    expect(rewind).toHaveBeenCalledTimes(effects)
+  })
+
   it('retains the raw Stop failure and recovers a committed rewind against raw bodies', async () => {
     await expectRawStopNoteRewindRecovery({ host, store, rewind })
   })

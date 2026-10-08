@@ -17949,6 +17949,7 @@
         "commands": "Comandos",
         "skills": "Habilidades",
         "loadingSkills": "Cargando habilidades…",
+        "clearDescription": "Borrar el contexto de la conversación",
         "skillsUnavailableHost": "Las habilidades no se pueden listar en los chats SSH",
         "skillsLoadFailed": "No se pudieron cargar las habilidades",
         "retrySkills": "Reintentar",

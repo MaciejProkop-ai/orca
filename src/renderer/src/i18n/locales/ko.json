@@ -17980,6 +17980,7 @@
         "commands": "명령어",
         "skills": "스킬",
         "loadingSkills": "스킬 로딩 중…",
+        "clearDescription": "대화 컨텍스트 지우기",
         "skillsUnavailableHost": "SSH 채팅에서는 스킬 목록을 표시할 수 없습니다",
         "skillsLoadFailed": "스킬을 불러올 수 없습니다",
         "retrySkills": "재시도",
